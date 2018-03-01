@@ -13,9 +13,16 @@ from utils import *
 class RegionDataset(data.Dataset):
     def __init__(self, img_dir, img_list, gt, opts):
 
+        # '../dataset/vot2013/iceskater/00000001.jpg'
         self.img_list = np.array([os.path.join(img_dir, img) for img in img_list])
         self.gt = gt
 
+        # opts['batch_frames'] = 8
+        # opts['batch_pos'] = 32
+        # opts['batch_neg'] = 96
+        #
+        # opts['overlap_pos'] = [0.7, 1]
+        # opts['overlap_neg'] = [0, 0.5]
         self.batch_frames = opts['batch_frames']
         self.batch_pos = opts['batch_pos']
         self.batch_neg = opts['batch_neg']
@@ -30,7 +37,11 @@ class RegionDataset(data.Dataset):
         self.pointer = 0
         
         image = Image.open(self.img_list[0]).convert('RGB')
+
+        # trans_f 0.1 scale_f 1.2 aspect_f 1.1
         self.pos_generator = SampleGenerator('gaussian', image.size, 0.1, 1.2, 1.1, True)
+
+        # trans_f 1 scale_f 1.2 aspect_f 1.1
         self.neg_generator = SampleGenerator('uniform', image.size, 1, 1.2, 1.1, True)
 
     def __iter__(self):
@@ -59,6 +70,7 @@ class RegionDataset(data.Dataset):
             pos_regions = np.concatenate((pos_regions, self.extract_regions(image, pos_examples)),axis=0)
             neg_regions = np.concatenate((neg_regions, self.extract_regions(image, neg_examples)),axis=0)
 
+        # regions contains samples from different image
         pos_regions = torch.from_numpy(pos_regions).float()
         neg_regions = torch.from_numpy(neg_regions).float()
         return pos_regions, neg_regions

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 opts = OrderedDict()
-opts['use_gpu'] = True
+opts['use_gpu'] = False
 
 opts['init_model_path'] = '../models/imagenet-vgg-m.mat'
 opts['model_path'] = '../models/mdnet_vot-otb_new.pth'

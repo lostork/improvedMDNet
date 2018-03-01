@@ -144,6 +144,8 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     
     # Init criterion and optimizer 
     criterion = BinaryLoss()
+    # opts['lr_init'] = 0.0001
+    # opts['lr_update'] = 0.0002
     init_optimizer = set_optimizer(model, opts['lr_init'])
     update_optimizer = set_optimizer(model, opts['lr_update'])
 
@@ -184,7 +186,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     feat_dim = pos_feats.size(-1)
 
     # Initial training
-    # opts['maxiter_update'] = 15
+    # opts['maxiter_init'] = 30
     train(model, criterion, init_optimizer, pos_feats, neg_feats, opts['maxiter_init'])
     
     # Init sample generators
@@ -242,6 +244,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
 
         # Estimate target bbox
         # opts['n_samples'] = 256
+        # trans_f 0.6 scale_f 1.05 no aspect ratio change
         # n 256 no overlap and scale limitation
         samples = gen_samples(sample_generator, target_bbox, opts['n_samples'])
         sample_scores = forward_samples(model, image, samples, out_layer='fc6')
@@ -308,6 +311,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
                 del neg_feats_all[0]
 
         # Short term update
+        # opts['maxiter_update'] = 15
         if not success:
             nframes = min(opts['n_frames_short'],len(pos_feats_all))
             pos_data = torch.stack(pos_feats_all[-nframes:],0).view(-1,feat_dim)
@@ -315,6 +319,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
             train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'])
         
         # Long term update
+        # opts['long_interval'] = 10
         elif i % opts['long_interval'] == 0:
             pos_data = torch.stack(pos_feats_all,0).view(-1,feat_dim)
             neg_data = torch.stack(neg_feats_all,0).view(-1,feat_dim)

@@ -10,8 +10,13 @@ import torch
 
 # add parameters to params dict
 def append_params(params, module, prefix):
+    # module : nn.Sequential(...)
+    # prefix : 'conv1'
     for child in module.children():
+        # child = conv2d(3,96,...)
         for k,p in child._parameters.iteritems():
+            # k : 'weight', 'bias'.
+            # p : Parameter.
             if p is None: continue
             
             if isinstance(child, nn.BatchNorm2d):
@@ -49,7 +54,7 @@ class MDNet(nn.Module):
         super(MDNet, self).__init__()
         self.K = K
         # torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True)
-        self.layers = nn.Sequential(OrderedDict([
+        self.cnn_layers = nn.Sequential(OrderedDict([
                 ('conv1', nn.Sequential(nn.Conv2d(3, 96, kernel_size=7, stride=2),
                                         nn.ReLU(),
                                         LRN(),
@@ -60,35 +65,152 @@ class MDNet(nn.Module):
                                         LRN(),
                                         nn.MaxPool2d(kernel_size=3, stride=2))),
                 ('conv3', nn.Sequential(nn.Conv2d(256, 512, kernel_size=3, stride=1),
-                                        nn.ReLU())),
-            # torch.nn.Linear(in_features, out_features, bias=True)
-                ('fc4',   nn.Sequential(nn.Dropout(0.5),
-                                        nn.Linear(512 * 3 * 3, 512),
-                                        nn.ReLU())),
-                ('fc5',   nn.Sequential(nn.Dropout(0.5),
-                                        nn.Linear(512, 512),
-                                        nn.ReLU()))]))
-        
-        self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5), 
+                                        nn.ReLU()))
+            # ,
+            # # torch.nn.Linear(in_features, out_features, bias=True)
+            #     ('fc4',   nn.Sequential(nn.Dropout(0.5),
+            #                             nn.Linear(512 * 3 * 3, 512),
+            #                             nn.ReLU())),
+            #     ('fc5',   nn.Sequential(nn.Dropout(0.5),
+            #                             nn.Linear(512, 512),
+            #                             nn.ReLU()))
+        ]))
+
+        self.conv1_feat_extractor = nn.Sequential(OrderedDict([
+            ('fe1_conv', nn.Sequential(nn.Conv2d(96, 16, kernel_size=1, stride=1)))
+        ]))
+
+        self.conv2_feat_extractor = nn.Sequential(OrderedDict([
+            ('fe2_conv', nn.Sequential(nn.Conv2d(256, 16, kernel_size=1, stride=1))),
+            ('fe2_deconv', nn.Sequential(nn.Upsample((51,51), mode='bilinear')))    #TODO:unc;
+        ]))
+
+        self.conv3_feat_extractor = nn.Sequential(OrderedDict([
+            ('fe3_conv', nn.Sequential(nn.Conv2d(512, 16, kernel_size=1, stride=1))),
+            ('fe3_deconv', nn.Sequential(nn.Upsample((51,51), mode='bilinear')))
+        ]))
+
+        self.conv1_classifier = nn.Sequential(OrderedDict([
+            ('cl1_conv', nn.Sequential(nn.Conv2d(16, 2, kernel_size=1, stride=1))),
+            ('cl1_fc4',   nn.Sequential(nn.Dropout(0.5),
+                                    nn.Linear(51 * 51 * 2, 512),
+                                    nn.ReLU())),
+            ('cl1_fc5',   nn.Sequential(nn.Dropout(0.5),
+                                    nn.Linear(512, 512),
+                                    nn.ReLU()))
+        ]))
+
+        self.conv2_classifier = nn.Sequential(OrderedDict([
+            ('cl2_conv', nn.Sequential(nn.Conv2d(16, 2, kernel_size=1, stride=1))),
+            ('cl2_fc4', nn.Sequential(nn.Dropout(0.5),
+                                      nn.Linear(51 * 51 * 2, 512),
+                                      nn.ReLU())),
+            ('cl2_fc5', nn.Sequential(nn.Dropout(0.5),
+                                      nn.Linear(512, 512),
+                                      nn.ReLU()))
+        ]))
+
+        self.conv3_classifier = nn.Sequential(OrderedDict([
+            ('cl3_conv', nn.Sequential(nn.Conv2d(16, 2, kernel_size=1, stride=1))),
+            ('cl3_fc4', nn.Sequential(nn.Dropout(0.5),
+                                      nn.Linear(51 * 51 * 2, 512),
+                                      nn.ReLU())),
+            ('cl3_fc5', nn.Sequential(nn.Dropout(0.5),
+                                      nn.Linear(512, 512),
+                                      nn.ReLU()))
+        ]))
+
+        self.fusion_classifier = nn.Sequential(OrderedDict([
+            ('fusion_conv', nn.Sequential(nn.Conv2d(48, 2, kernel_size=1, stride=1))),
+            ('fusion_fc4', nn.Sequential(nn.Dropout(0.5),
+                                      nn.Linear(51 * 51 * 2, 512),
+                                      nn.ReLU())),
+            ('fusion_fc5', nn.Sequential(nn.Dropout(0.5),
+                                      nn.Linear(512, 512),
+                                      nn.ReLU()))
+        ]))
+
+        self.shared_layers = [self.cnn_layers,
+                              self.conv1_feat_extractor,
+                              self.conv2_feat_extractor,
+                              self.conv3_feat_extractor,
+                              self.conv1_classifier,
+                              self.conv2_classifier,
+                              self.conv3_classifier,
+                              self.fusion_classifier
+                              ]
+
+        self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
                                                      nn.Linear(512, 2)) for _ in range(K)])
-        
-        if model_path is not None:
-            if os.path.splitext(model_path)[1] == '.pth':
-                # load pretrained shared layer parameters
-                self.load_model(model_path)
-            elif os.path.splitext(model_path)[1] == '.mat':
-                self.load_mat_model(model_path)
-            else:
-                raise RuntimeError("Unkown model format: %s" % (model_path))
+
+        self.cl1_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+                                                         nn.Linear(512, 2)) for _ in range(K)])
+
+        self.cl2_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+                                                         nn.Linear(512, 2)) for _ in range(K)])
+
+        self.cl3_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+                                                         nn.Linear(512, 2)) for _ in range(K)])
+
+        self.fusion_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+                                                            nn.Linear(512, 2)) for _ in range(K)])
+
+        self.domain_specific_layers = [self.cl1_branches,
+                                       self.cl2_branches,
+                                       self.cl3_branches,
+                                       self.fusion_branches
+                                       ]
+
+        # if model_path is not None:
+        #     if os.path.splitext(model_path)[1] == '.pth':
+        #         # load pretrained shared layer parameters
+        #         self.load_model(model_path)
+        #     elif os.path.splitext(model_path)[1] == '.mat':
+        #         self.load_mat_model(model_path)
+        #     else:
+        #         raise RuntimeError("Unkown model format: %s" % (model_path))
         # add all (including shared layers and branch) parameter to self.params
         self.build_param_dict()
 
     def build_param_dict(self):
         self.params = OrderedDict()
-        for name, module in self.layers.named_children():
-            append_params(self.params, module, name)
-        for k, module in enumerate(self.branches):
-            append_params(self.params, module, 'fc6_%d'%(k))
+
+        for layers in self.shared_layers:
+            for name, module in layers.named_children():
+                append_params(self.params, module, name)
+
+        # for name, module in self.cnn_layers.named_children():
+        #     # name = 'conv1'
+        #     # module = nn.Sequential
+        #     append_params(self.params, module, name)
+
+
+        # for name, module in self.conv1_feat_extractor.named_children():
+        #     append_params(self.params, module, name)
+        #
+        # for name, module in self.conv2_feat_extractor.named_children():
+        #     append_params(self.params, module, name)
+        #
+        # for name, module in self.conv3_feat_extractor.named_children():
+        #     append_params(self.params, module, name)
+        #
+
+        for k, module in enumerate(self.cl1_branches):
+            append_params(self.params, module, 'cl1_fc6_%d' % (k))
+
+        for k, module in enumerate(self.cl2_branches):
+            append_params(self.params, module, 'cl2_fc6_%d' % (k))
+
+        for k, module in enumerate(self.cl3_branches):
+            append_params(self.params, module, 'cl3_fc6_%d' % (k))
+
+        for k, module in enumerate(self.fusion_branches):
+            append_params(self.params, module, 'fusion_fc6_%d' % (k))
+
+        # for k, module in enumerate(self.branches):
+        #     append_params(self.params, module, 'fc6_%d' % (k))
+
+        # append_params(self.params, self.conv1_feat_extractor, 'fe_1')
 
     def set_learnable_params(self, layers):
         for k, p in self.params.iteritems():
@@ -109,7 +231,7 @@ class MDNet(nn.Module):
         # forward model from in_layer to out_layer
 
         run = False
-        for name, module in self.layers.named_children():
+        for name, module in self.cnn_layers.named_children():
             if name == in_layer:
                 run = True
             if run:
@@ -128,7 +250,7 @@ class MDNet(nn.Module):
     def load_model(self, model_path):
         states = torch.load(model_path)
         shared_layers = states['shared_layers']
-        self.layers.load_state_dict(shared_layers)
+        self.cnn_layers.load_state_dict(shared_layers)
     
     def load_mat_model(self, matfile):
         mat = scipy.io.loadmat(matfile)
@@ -137,8 +259,8 @@ class MDNet(nn.Module):
         # copy conv weights
         for i in range(3):
             weight, bias = mat_layers[i*4]['weights'].item()[0]
-            self.layers[i][0].weight.data = torch.from_numpy(np.transpose(weight, (3,2,0,1)))
-            self.layers[i][0].bias.data = torch.from_numpy(bias[:,0])
+            self.cnn_layers[i][0].weight.data = torch.from_numpy(np.transpose(weight, (3, 2, 0, 1)))
+            self.cnn_layers[i][0].bias.data = torch.from_numpy(bias[:, 0])
 
     
 
@@ -168,7 +290,9 @@ class Accuracy():
 
 class Precision():
     def __call__(self, pos_score, neg_score):
-        
+
+        # take the topk scores and check if they are belong to pos_score,
+        # #(belongs) / #(num of pos_score) = precision
         scores = torch.cat((pos_score[:,1], neg_score[:,1]), 0)
         topk = torch.topk(scores, pos_score.size(0))[1]
         prec = (topk < pos_score.size(0)).float().sum() / (pos_score.size(0)+1e-8)

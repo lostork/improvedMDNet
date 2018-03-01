@@ -41,18 +41,28 @@ def train_mdnet():
         img_dir = os.path.join(img_home, seqname)
         dataset[k] = RegionDataset(img_dir, img_list, gt, opts)
 
+    ##------------------------------------
+
     ## Init model ##
-    model = MDNet(opts['init_model_path'], K)
+    # opts['init_model_path'] = '../models/imagenet-vgg-m.mat'
+    # VGG-M pretrained on ImageNet
+    # model = MDNet(opts['init_model_path'], K)
+    model = MDNet(None, K)
     if opts['use_gpu']:
         model = model.cuda()
+
+    # opts['ft_layers'] = ['conv','fc']
     model.set_learnable_params(opts['ft_layers'])
         
     ## Init criterion and optimizer ##
     criterion = BinaryLoss()
     evaluator = Precision()
+
+    # opts['lr'] = 0.0001
     optimizer = set_optimizer(model, opts['lr'])
 
     best_prec = 0.
+    # opts['n_cycles'] = 50
     for i in range(opts['n_cycles']):
         print "==== Start Cycle %d ====" % (i)
         k_list = np.random.permutation(K)
