@@ -84,7 +84,7 @@ def train_mdnet():
             loss = criterion(pos_score, neg_score)
             model.zero_grad()
             loss.backward()
-            #TODO:unc;
+            # TODO: unc for the clip grad effect in the new architecture
             torch.nn.utils.clip_grad_norm(model.parameters(), opts['grad_clip'])
             optimizer.step()
             
@@ -98,12 +98,38 @@ def train_mdnet():
         print "Mean Precision: %.3f" % (cur_prec)
         if cur_prec > best_prec:
             best_prec = cur_prec
-            #TODO:
-            # if opts['use_gpu']:
-            #     model = model.cpu()
+
+            if opts['use_gpu']:
+                model = model.cpu()
+
+            # self.shared_layers = [self.cnn_layers,
+            #                       self.conv1_feat_extractor,
+            #                       self.conv2_feat_extractor,
+            #                       self.conv3_feat_extractor,
+            #                       self.conv1_classifier,
+            #                       self.conv2_classifier,
+            #                       self.conv3_classifier,
+            #                       self.fusion_classifier
+            #                       ]
+
+            states = {'cnn_layers': model.cnn_layers.state_dict(),
+                      'conv1_feat_extractor': model.conv1_feat_extractor.state_dict(),
+                      'conv2_feat_extractor': model.conv2_feat_extractor.state_dict(),
+                      'conv3_feat_extractor': model.conv3_feat_extractor.state_dict(),
+                      'conv1_classifier': model.conv1_classifier.state_dict(),
+                      'conv2_classifier': model.conv2_classifier.state_dict(),
+                      'conv3_classifier': model.conv3_classifier.state_dict(),
+                      'fusion_classifier': model.fusion_classifier.state_dict()
+                      }
             # states = {'shared_layers': model.layers.state_dict()}
+
+            print "Save model to %s" % opts['model_path']
+            torch.save(states, opts['model_path'])
             # print "Save model to %s" % opts['model_path']
             # torch.save(states, opts['model_path'])
+
+            if opts['use_gpu']:
+                model = model.cuda()
             # if opts['use_gpu']:
             #     model = model.cuda()
 

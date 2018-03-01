@@ -265,7 +265,7 @@ class MDNet(nn.Module):
                 elif name == 'conv3':
                     conv3_feat = module(conv2_feat)
 
-            #TODO:unc
+
             conv1_feat = self.conv1_feat_extractor(conv1_feat)
             conv2_feat = self.conv2_feat_extractor(conv2_feat)
             conv3_feat = self.conv3_feat_extractor(conv3_feat)
@@ -287,7 +287,7 @@ class MDNet(nn.Module):
             conv3_scores = classify_from_feat(conv3_feat, self.conv3_classifier, self.cl3_branches, k)
             fusion_scores = classify_from_feat(fusion_feat, self.fusion_classifier, self.fusion_branches, k)
 
-            #TODO:
+            # TODO: better impl and more options
             final_scores = (conv1_scores + conv2_scores + conv3_scores + fusion_scores) / 4
             return final_scores
 
@@ -311,6 +311,7 @@ class MDNet(nn.Module):
         #     return F.softmax(x)
     
     def load_model(self, model_path):
+        # TODO: understand the details
         states = torch.load(model_path)
         shared_layers = states['shared_layers']
         self.cnn_layers.load_state_dict(shared_layers)
