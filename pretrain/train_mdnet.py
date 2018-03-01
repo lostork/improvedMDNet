@@ -78,12 +78,13 @@ def train_mdnet():
                 pos_regions = pos_regions.cuda()
                 neg_regions = neg_regions.cuda()
         
-            pos_score = model(pos_regions, k)
-            neg_score = model(neg_regions, k)
+            pos_score = model(pos_regions, k, out_layer='fusion')
+            neg_score = model(neg_regions, k, out_layer='fusion')
 
             loss = criterion(pos_score, neg_score)
             model.zero_grad()
             loss.backward()
+            #TODO:unc;
             torch.nn.utils.clip_grad_norm(model.parameters(), opts['grad_clip'])
             optimizer.step()
             
@@ -97,13 +98,14 @@ def train_mdnet():
         print "Mean Precision: %.3f" % (cur_prec)
         if cur_prec > best_prec:
             best_prec = cur_prec
-            if opts['use_gpu']:
-                model = model.cpu()
-            states = {'shared_layers': model.layers.state_dict()}
-            print "Save model to %s" % opts['model_path']
-            torch.save(states, opts['model_path'])
-            if opts['use_gpu']:
-                model = model.cuda()
+            #TODO:
+            # if opts['use_gpu']:
+            #     model = model.cpu()
+            # states = {'shared_layers': model.layers.state_dict()}
+            # print "Save model to %s" % opts['model_path']
+            # torch.save(states, opts['model_path'])
+            # if opts['use_gpu']:
+            #     model = model.cuda()
 
 
 if __name__ == "__main__":

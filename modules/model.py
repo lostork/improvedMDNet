@@ -29,6 +29,27 @@ def append_params(params, module, prefix):
             else:
                 raise RuntimeError("Duplicated param name: %s" % (name))
 
+def classify_from_feat(feat, classifer, branches, k):
+
+    # TODO:unc; is this change fusion feat
+    out = feat
+    for name, module in classifer.named_children():
+        out = module(out)
+        if name.endswith('conv'):
+            out = out.view(out.size(0), -1)
+
+    out = branches[k](out)
+    return out
+
+
+# conv1_out = conv1_feat
+#
+# for name, module in self.conv1_classifier.named_children():
+#     conv1_out = module(conv1_out)
+#     if name.endswith('conv'):
+#         conv1_out = conv1_out.view(conv1_out.size(0), -1)
+#
+# conv1_out = self.cl1_branches[k](conv1_out)
 
 class LRN(nn.Module):
     def __init__(self):
@@ -77,7 +98,8 @@ class MDNet(nn.Module):
         ]))
 
         self.conv1_feat_extractor = nn.Sequential(OrderedDict([
-            ('fe1_conv', nn.Sequential(nn.Conv2d(96, 16, kernel_size=1, stride=1)))
+            ('fe1_conv', nn.Sequential(nn.Conv2d(96, 16, kernel_size=1, stride=1))),
+            ('fe1_deconv', nn.Sequential(nn.Upsample((51, 51), mode='bilinear'))) #TODO:have better impl
         ]))
 
         self.conv2_feat_extractor = nn.Sequential(OrderedDict([
@@ -140,8 +162,8 @@ class MDNet(nn.Module):
                               self.fusion_classifier
                               ]
 
-        self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
-                                                     nn.Linear(512, 2)) for _ in range(K)])
+        # self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+        #                                              nn.Linear(512, 2)) for _ in range(K)])
 
         self.cl1_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
                                                          nn.Linear(512, 2)) for _ in range(K)])
@@ -230,22 +252,63 @@ class MDNet(nn.Module):
         #
         # forward model from in_layer to out_layer
 
-        run = False
-        for name, module in self.cnn_layers.named_children():
-            if name == in_layer:
-                run = True
-            if run:
-                x = module(x)
-                if name == 'conv3':
-                    x = x.view(x.size(0),-1)
-                if name == out_layer:
-                    return x
-        
-        x = self.branches[k](x)
-        if out_layer=='fc6':
-            return x
-        elif out_layer=='fc6_softmax':
-            return F.softmax(x)
+        conv1_feat = None
+        conv2_feat = None
+        conv3_feat = None
+
+        if in_layer == 'conv1' and out_layer == 'fusion':
+            for name, module in self.cnn_layers.named_children():
+                if name == 'conv1':
+                    conv1_feat = module(x)
+                elif name == 'conv2':
+                    conv2_feat = module(conv1_feat)
+                elif name == 'conv3':
+                    conv3_feat = module(conv2_feat)
+
+            #TODO:unc
+            conv1_feat = self.conv1_feat_extractor(conv1_feat)
+            conv2_feat = self.conv2_feat_extractor(conv2_feat)
+            conv3_feat = self.conv3_feat_extractor(conv3_feat)
+
+            #TODO:unc;
+            fusion_feat = torch.cat((conv1_feat, conv2_feat, conv3_feat), 1)
+
+            #TODO:unc; is this change fusion feat
+            # conv1_out = conv1_feat
+            #
+            # for name, module in self.conv1_classifier.named_children():
+            #     conv1_out = module(conv1_out)
+            #     if name.endswith('conv'):
+            #         conv1_out = conv1_out.view(conv1_out.size(0), -1)
+            #
+            # conv1_out = self.cl1_branches[k](conv1_out)
+            conv1_scores = classify_from_feat(conv1_feat, self.conv1_classifier, self.cl1_branches, k)
+            conv2_scores = classify_from_feat(conv2_feat, self.conv2_classifier, self.cl2_branches, k)
+            conv3_scores = classify_from_feat(conv3_feat, self.conv3_classifier, self.cl3_branches, k)
+            fusion_scores = classify_from_feat(fusion_feat, self.fusion_classifier, self.fusion_branches, k)
+
+            #TODO:
+            final_scores = (conv1_scores + conv2_scores + conv3_scores + fusion_scores) / 4
+            return final_scores
+
+
+        #TODO:
+        # run = False
+        # for name, module in self.cnn_layers.named_children():
+        #     if name == in_layer:
+        #         run = True
+        #     if run:
+        #         x = module(x)
+        #         if name == 'conv3':
+        #             x = x.view(x.size(0),-1)
+        #         if name == out_layer:
+        #             return x
+        #
+        # x = self.branches[k](x)
+        # if out_layer=='fc6':
+        #     return x
+        # elif out_layer=='fc6_softmax':
+        #     return F.softmax(x)
     
     def load_model(self, model_path):
         states = torch.load(model_path)
