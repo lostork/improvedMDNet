@@ -12,4 +12,4 @@ dataset/*
 .DS_Store
 models/mdnet_vot-otb_new.pth
 pretrain/test.py
-
+models/mdnet_vot_otb*.pth
