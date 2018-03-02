@@ -63,7 +63,9 @@ def train_mdnet():
 
     best_prec = 0.
     # opts['n_cycles'] = 50
+    # TODO: cancel test
     for i in range(opts['n_cycles']):
+    # for i in range(2):
         print "==== Start Cycle %d ====" % (i)
         k_list = np.random.permutation(K)
         prec = np.zeros(K)

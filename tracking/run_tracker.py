@@ -140,8 +140,8 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
 
     # Init model
     # TODO:!!!change to use pretrained model.
-    # model = MDNet(opts['model_path'])
-    model = MDNet(None)
+    model = MDNet(opts['model_path'])
+    # model = MDNet(None)
     if opts['use_gpu']:
         model = model.cuda()
     # set p.requires_grad = True for all fc layers parameters and False for others

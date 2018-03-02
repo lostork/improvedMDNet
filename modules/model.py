@@ -387,6 +387,7 @@ class MDNet(nn.Module):
 
         # shared_layers = states['shared_layers']
         # self.cnn_layers.load_state_dict(shared_layers)
+        # TODO: more check.
         self.cnn_layers.load_state_dict(states['cnn_layers'])
         self.conv1_feat_extractor.load_state_dict(states['conv1_feat_extractor'])
         self.conv2_feat_extractor.load_state_dict(states['conv2_feat_extractor'])
