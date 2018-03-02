@@ -323,8 +323,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
             nframes = min(opts['n_frames_short'],len(pos_feats_all))
             # TODO:able to use torch.cat? unc for dim.
             pos_data = torch.stack(pos_feats_all[-nframes:],0).view(-1,4,feat_dim)
-            # TODO: this validation
-            print pos_feats_all[-nframes:][1] == pos_data[50:100,:,:]
+            # print pos_feats_all[-nframes:][1] == pos_data[50:100,:,:]
             neg_data = torch.stack(neg_feats_all,0).view(-1,4,feat_dim)
             train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'], in_layer='before_fc', out_layer='fusion')
         
