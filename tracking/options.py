@@ -44,5 +44,5 @@ opts['long_interval'] = 10
 opts['w_decay'] = 0.0005
 opts['momentum'] = 0.9
 opts['grad_clip'] = 10
-opts['lr_mult'] = {'fc6':10}
-opts['ft_layers'] = ['fc']
+opts['lr_mult'] = {'cl1_fc6':10, 'cl2_fc6':10, 'cl3_fc6':10, 'fusion_fc6':10}
+opts['ft_layers'] = ['cl1_fc', 'cl2_fc', 'cl3_fc', 'fusion_fc']

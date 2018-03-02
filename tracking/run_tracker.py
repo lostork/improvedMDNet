@@ -31,6 +31,7 @@ def forward_samples(model, image, samples, out_layer='conv3'):
         regions = Variable(regions)
         if opts['use_gpu']:
             regions = regions.cuda()
+        # TODO: new architect with k=0(default)
         feat = model(regions, out_layer=out_layer)
         if i==0:
             feats = feat.data.clone()
@@ -52,7 +53,7 @@ def set_optimizer(model, lr_base, lr_mult=opts['lr_mult'], momentum=opts['moment
     return optimizer
 
 
-def train(model, criterion, optimizer, pos_feats, neg_feats, maxiter, in_layer='fc4'):
+def train(model, criterion, optimizer, pos_feats, neg_feats, maxiter, in_layer='fc4', out_layer='fusion'):
     model.train()
 
     # opts['batch_pos'] = 32
@@ -96,7 +97,8 @@ def train(model, criterion, optimizer, pos_feats, neg_feats, maxiter, in_layer='
             model.eval()
             for start in range(0,batch_neg_cand,batch_test):
                 end = min(start+batch_test,batch_neg_cand)
-                score = model(batch_neg_feats[start:end], in_layer=in_layer)
+                #TODO: out_layer should be specified
+                score = model(batch_neg_feats[start:end], in_layer=in_layer, out_layer=out_layer)
                 if start==0:
                     neg_cand_score = score.data[:,1].clone()
                 else:
@@ -107,9 +109,10 @@ def train(model, criterion, optimizer, pos_feats, neg_feats, maxiter, in_layer='
             model.train()
         
         # forward
-        pos_score = model(batch_pos_feats, in_layer=in_layer)
-        neg_score = model(batch_neg_feats, in_layer=in_layer)
-        
+        pos_score = model(batch_pos_feats, in_layer=in_layer, out_layer=out_layer)
+        neg_score = model(batch_neg_feats, in_layer=in_layer, out_layer=out_layer)
+
+        # TODO: the backward flow of the current impl may be messy.
         # optimize
         loss = criterion(pos_score, neg_score)
         model.zero_grad()
@@ -136,7 +139,9 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     result_bb[0] = target_bbox
 
     # Init model
-    model = MDNet(opts['model_path'])
+    # TODO:!!!change to use pretrained model.
+    # model = MDNet(opts['model_path'])
+    model = MDNet(None)
     if opts['use_gpu']:
         model = model.cuda()
     # set p.requires_grad = True for all fc layers parameters and False for others
@@ -159,7 +164,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     bbreg_examples = gen_samples(SampleGenerator('uniform', image.size, 0.3, 1.5, 1.1),
                                  target_bbox, opts['n_bbreg'], opts['overlap_bbreg'], opts['scale_bbreg'])
     # out_layer = 'conv3'
-    bbreg_feats = forward_samples(model, image, bbreg_examples)
+    bbreg_feats = forward_samples(model, image, bbreg_examples, out_layer='fusion_feats_only')
     bbreg = BBRegressor(image.size)
     bbreg.train(bbreg_feats, bbreg_examples, target_bbox)
 
@@ -181,13 +186,13 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     neg_examples = np.random.permutation(neg_examples)
 
     # Extract pos/neg features
-    pos_feats = forward_samples(model, image, pos_examples)
-    neg_feats = forward_samples(model, image, neg_examples)
+    pos_feats = forward_samples(model, image, pos_examples, out_layer='combined_feats')
+    neg_feats = forward_samples(model, image, neg_examples, out_layer='combined_feats')
     feat_dim = pos_feats.size(-1)
 
     # Initial training
     # opts['maxiter_init'] = 30
-    train(model, criterion, init_optimizer, pos_feats, neg_feats, opts['maxiter_init'])
+    train(model, criterion, init_optimizer, pos_feats, neg_feats, opts['maxiter_init'], in_layer='before_fc', out_layer='fusion')
     
     # Init sample generators
     # opts['trans_f'] = 0.6
@@ -247,7 +252,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
         # trans_f 0.6 scale_f 1.05 no aspect ratio change
         # n 256 no overlap and scale limitation
         samples = gen_samples(sample_generator, target_bbox, opts['n_samples'])
-        sample_scores = forward_samples(model, image, samples, out_layer='fc6')
+        sample_scores = forward_samples(model, image, samples, out_layer='fusion')
         top_scores, top_idx = sample_scores[:,1].topk(5)
         top_idx = top_idx.cpu().numpy()
         target_score = top_scores.mean()
@@ -265,7 +270,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
         # Bbox regression
         if success:
             bbreg_samples = samples[top_idx]
-            bbreg_feats = forward_samples(model, image, bbreg_samples)
+            bbreg_feats = forward_samples(model, image, bbreg_samples, out_layer='fusion_feats_only')
             bbreg_samples = bbreg.predict(bbreg_feats, bbreg_samples)
             bbreg_bbox = bbreg_samples.mean(axis=0)
         else:
@@ -301,8 +306,8 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
                                        opts['overlap_neg_update'])
 
             # Extract pos/neg features
-            pos_feats = forward_samples(model, image, pos_examples)
-            neg_feats = forward_samples(model, image, neg_examples)
+            pos_feats = forward_samples(model, image, pos_examples, out_layer='combined_feats')
+            neg_feats = forward_samples(model, image, neg_examples, out_layer='combined_feats')
             pos_feats_all.append(pos_feats)
             neg_feats_all.append(neg_feats)
             if len(pos_feats_all) > opts['n_frames_long']:
@@ -310,20 +315,28 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
             if len(neg_feats_all) > opts['n_frames_short']:
                 del neg_feats_all[0]
 
+
         # Short term update
         # opts['maxiter_update'] = 15
+        # TODO: haven't checked here.
         if not success:
             nframes = min(opts['n_frames_short'],len(pos_feats_all))
-            pos_data = torch.stack(pos_feats_all[-nframes:],0).view(-1,feat_dim)
-            neg_data = torch.stack(neg_feats_all,0).view(-1,feat_dim)
-            train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'])
+            # TODO:able to use torch.cat? unc for dim.
+            pos_data = torch.stack(pos_feats_all[-nframes:],0).view(-1,4,feat_dim)
+            # TODO: this validation
+            print pos_feats_all[-nframes:][1] == pos_data[50:100,:,:]
+            neg_data = torch.stack(neg_feats_all,0).view(-1,4,feat_dim)
+            train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'], in_layer='before_fc', out_layer='fusion')
         
         # Long term update
         # opts['long_interval'] = 10
+        # TODO: cancel test
         elif i % opts['long_interval'] == 0:
-            pos_data = torch.stack(pos_feats_all,0).view(-1,feat_dim)
-            neg_data = torch.stack(neg_feats_all,0).view(-1,feat_dim)
-            train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'])
+        # elif i % 2 == 0:
+            pos_data = torch.stack(pos_feats_all,0).view(-1,4,feat_dim)
+            # print pos_feats_all[1] == pos_data[50:100,:,:]  #result : all one(True)
+            neg_data = torch.stack(neg_feats_all,0).view(-1,4,feat_dim)
+            train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'], in_layer='before_fc', out_layer='fusion')
         
         spf = time.time()-tic
         spf_total += spf
