@@ -46,8 +46,8 @@ def train_mdnet():
     ## Init model ##
     # opts['init_model_path'] = '../models/imagenet-vgg-m.mat'
     # VGG-M pretrained on ImageNet
-    # model = MDNet(opts['init_model_path'], K)
-    model = MDNet(None, K)
+    model = MDNet(opts['init_model_path'], K)
+    # model = MDNet(None, K)
     if opts['use_gpu']:
         model = model.cuda()
 

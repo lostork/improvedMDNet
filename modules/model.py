@@ -199,8 +199,8 @@ class MDNet(nn.Module):
             if os.path.splitext(model_path)[1] == '.pth':
                 # load pretrained shared layer parameters
                 self.load_model(model_path)
-        #     elif os.path.splitext(model_path)[1] == '.mat':
-        #         self.load_mat_model(model_path)
+            elif os.path.splitext(model_path)[1] == '.mat':
+                self.load_mat_model(model_path)
             else:
                 raise RuntimeError("Unknown model format: %s" % (model_path))
 
