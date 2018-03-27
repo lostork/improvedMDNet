@@ -46,7 +46,7 @@ def train_mdnet():
     ## Init model ##
     # opts['init_model_path'] = '../models/imagenet-vgg-m.mat'
     # VGG-M pretrained on ImageNet
-    model = MDNet(opts['init_model_path'], K)
+    model = MDNet(opts['init_model_path'], K)  # TODO: use MDNet fc to init .
     # model = MDNet(None, K)
     if opts['use_gpu']:
         model = model.cuda()
@@ -117,7 +117,7 @@ def train_mdnet():
             states = {'cnn_layers': model.cnn_layers.state_dict(),
                       'conv1_feat_extractor': model.conv1_feat_extractor.state_dict(),
                       'conv2_feat_extractor': model.conv2_feat_extractor.state_dict(),
-                      'conv3_feat_extractor': model.conv3_feat_extractor.state_dict(),
+                      # 'conv3_feat_extractor': model.conv3_feat_extractor.state_dict(),
                       'conv1_classifier': model.conv1_classifier.state_dict(),
                       'conv2_classifier': model.conv2_classifier.state_dict(),
                       'conv3_classifier': model.conv3_classifier.state_dict(),
