@@ -164,7 +164,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     bbreg_examples = gen_samples(SampleGenerator('uniform', image.size, 0.3, 1.5, 1.1),
                                  target_bbox, opts['n_bbreg'], opts['overlap_bbreg'], opts['scale_bbreg'])
     # out_layer = 'conv3'
-    bbreg_feats = forward_samples(model, image, bbreg_examples, out_layer='fusion_feats_only')
+    bbreg_feats = forward_samples(model, image, bbreg_examples, out_layer='conv3')
     bbreg = BBRegressor(image.size)
     bbreg.train(bbreg_feats, bbreg_examples, target_bbox)
 
@@ -188,7 +188,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
     # Extract pos/neg features
     pos_feats = forward_samples(model, image, pos_examples, out_layer='combined_feats')
     neg_feats = forward_samples(model, image, neg_examples, out_layer='combined_feats')
-    feat_dim = pos_feats.size(-1)
+    # feat_dim = pos_feats.size(-1)
 
     # Initial training
     # opts['maxiter_init'] = 30
@@ -223,7 +223,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
         ax = plt.Axes(fig, [0., 0., 1., 1.])
         ax.set_axis_off()
         fig.add_axes(ax)
-        im = ax.imshow(image, aspect='normal')
+        im = ax.imshow(image, aspect='auto')
 
         if gt is not None:
             gt_rect = plt.Rectangle(tuple(gt[0,:2]),gt[0,2],gt[0,3], 
@@ -270,7 +270,7 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
         # Bbox regression
         if success:
             bbreg_samples = samples[top_idx]
-            bbreg_feats = forward_samples(model, image, bbreg_samples, out_layer='fusion_feats_only')
+            bbreg_feats = forward_samples(model, image, bbreg_samples, out_layer='conv3')
             bbreg_samples = bbreg.predict(bbreg_feats, bbreg_samples)
             bbreg_bbox = bbreg_samples.mean(axis=0)
         else:
@@ -322,19 +322,23 @@ def run_mdnet(img_list, init_bbox, gt=None, savefig_dir='', display=False):
         if not success:
             nframes = min(opts['n_frames_short'],len(pos_feats_all))
             # TODO:able to use torch.cat? unc for dim.
-            pos_data = torch.stack(pos_feats_all[-nframes:],0).view(-1,4,feat_dim)
+
+            # TODO: haven't checked here.
+            pos_data = torch.stack(pos_feats_all[-nframes:],0).view(-1,1376,3,3)
             # print pos_feats_all[-nframes:][1] == pos_data[50:100,:,:]
-            neg_data = torch.stack(neg_feats_all,0).view(-1,4,feat_dim)
+            neg_data = torch.stack(neg_feats_all,0).view(-1,1376,3,3)
             train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'], in_layer='before_fc', out_layer='fusion')
         
         # Long term update
         # opts['long_interval'] = 10
-        # TODO: cancel test
+        # TODO: cancel test!!!!!!!!!!!!!!!!!!!!!
         elif i % opts['long_interval'] == 0:
         # elif i % 2 == 0:
-            pos_data = torch.stack(pos_feats_all,0).view(-1,4,feat_dim)
-            # print pos_feats_all[1] == pos_data[50:100,:,:]  #result : all one(True)
-            neg_data = torch.stack(neg_feats_all,0).view(-1,4,feat_dim)
+        #     pos_data = torch.stack(pos_feats_all, 0)
+            pos_data = torch.stack(pos_feats_all,0).view(-1,1376,3,3)
+            # print pos_feats_all[1] == pos_data[50:100,:,:,:]  #result : all one(True)
+            # a = pos_feats_all[1] == pos_data[50:100,:,:,:]
+            neg_data = torch.stack(neg_feats_all,0).view(-1,1376,3,3)
             train(model, criterion, update_optimizer, pos_data, neg_data, opts['maxiter_update'], in_layer='before_fc', out_layer='fusion')
         
         spf = time.time()-tic
