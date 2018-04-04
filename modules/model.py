@@ -341,17 +341,17 @@ class MDNet(nn.Module):
                 # conv2_bf_fc_feats = x[:,1,:]
                 # conv3_bf_fc_feats = x[:,2,:]
                 # fusion_bf_fc_feats = x[:,3,:]
-                conv1_bf_fc_feats = x[:,0:96,:,:].clone() # TODO: maybe more check.
-                conv1_bf_fc_feats = conv1_bf_fc_feats.view(conv1_bf_fc_feats.size(0), -1)
-                conv2_bf_fc_feats = x[:,96:352,:,:].clone()
-                conv2_bf_fc_feats = conv2_bf_fc_feats.view(conv2_bf_fc_feats.size(0), -1)
+                # conv1_bf_fc_feats = x[:,0:96,:,:].clone() # TODO: maybe more check.
+                # conv1_bf_fc_feats = conv1_bf_fc_feats.view(conv1_bf_fc_feats.size(0), -1)
+                # conv2_bf_fc_feats = x[:,96:352,:,:].clone()
+                # conv2_bf_fc_feats = conv2_bf_fc_feats.view(conv2_bf_fc_feats.size(0), -1)
                 conv3_bf_fc_feats = x[:,352:864,:,:].clone()
                 conv3_bf_fc_feats = conv3_bf_fc_feats.view(conv3_bf_fc_feats.size(0), -1)
                 fusion_bf_fc_feats = x[:,864:1376,:,:].clone()
                 fusion_bf_fc_feats = fusion_bf_fc_feats.view(fusion_bf_fc_feats.size(0), -1)
 
-                conv1_scores = classify_from_bf_fc_feat(conv1_bf_fc_feats, self.conv1_classifier, self.cl1_branches, k)
-                conv2_scores = classify_from_bf_fc_feat(conv2_bf_fc_feats, self.conv2_classifier, self.cl2_branches, k)
+                # conv1_scores = classify_from_bf_fc_feat(conv1_bf_fc_feats, self.conv1_classifier, self.cl1_branches, k)
+                # conv2_scores = classify_from_bf_fc_feat(conv2_bf_fc_feats, self.conv2_classifier, self.cl2_branches, k)
                 conv3_scores = classify_from_bf_fc_feat(conv3_bf_fc_feats, self.conv3_classifier, self.cl3_branches, k)
                 fusion_scores = classify_from_bf_fc_feat(fusion_bf_fc_feats, self.fusion_classifier, self.fusion_branches, k)
 
