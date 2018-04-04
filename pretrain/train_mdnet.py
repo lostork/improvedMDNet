@@ -118,8 +118,8 @@ def train_mdnet():
                       'conv1_feat_extractor': model.conv1_feat_extractor.state_dict(),
                       'conv2_feat_extractor': model.conv2_feat_extractor.state_dict(),
                       # 'conv3_feat_extractor': model.conv3_feat_extractor.state_dict(),
-                      'conv1_classifier': model.conv1_classifier.state_dict(),
-                      'conv2_classifier': model.conv2_classifier.state_dict(),
+                      # 'conv1_classifier': model.conv1_classifier.state_dict(),
+                      # 'conv2_classifier': model.conv2_classifier.state_dict(),
                       'conv3_classifier': model.conv3_classifier.state_dict(),
                       'fusion_classifier': model.fusion_classifier.state_dict()
                       }

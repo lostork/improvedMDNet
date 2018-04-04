@@ -22,5 +22,5 @@ opts['momentum'] = 0.9
 opts['grad_clip'] = 10
 # opts['ft_layers'] = ['conv','fc']
 opts['ft_layers'] = ['conv', 'fe', 'cl', 'fusion']
-opts['lr_mult'] = {'cl1_fc':10, 'cl2_fc':10, 'cl3_fc':10, 'fusion_fc':10}
+opts['lr_mult'] = {'cl3_fc':10, 'fusion_fc':10}
 opts['n_cycles'] = 50

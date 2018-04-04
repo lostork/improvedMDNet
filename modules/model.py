@@ -124,23 +124,23 @@ class MDNet(nn.Module):
         #     ('fe3_deconv', nn.Sequential(nn.Upsample((51,51), mode='bilinear')))
         # ]))
 
-        self.conv1_classifier = nn.Sequential(OrderedDict([
-            ('cl1_fc4',   nn.Sequential(nn.Dropout(0.5),
-                                    nn.Linear(3 * 3 * 96, 512),
-                                    nn.ReLU())),
-            ('cl1_fc5',   nn.Sequential(nn.Dropout(0.5),
-                                    nn.Linear(512, 512),
-                                    nn.ReLU()))
-        ]))
+        # self.conv1_classifier = nn.Sequential(OrderedDict([
+        #     ('cl1_fc4',   nn.Sequential(nn.Dropout(0.5),
+        #                             nn.Linear(3 * 3 * 96, 512),
+        #                             nn.ReLU())),
+        #     ('cl1_fc5',   nn.Sequential(nn.Dropout(0.5),
+        #                             nn.Linear(512, 512),
+        #                             nn.ReLU()))
+        # ]))
 
-        self.conv2_classifier = nn.Sequential(OrderedDict([
-            ('cl2_fc4', nn.Sequential(nn.Dropout(0.5),
-                                      nn.Linear(3 * 3 * 256, 512),
-                                      nn.ReLU())),
-            ('cl2_fc5', nn.Sequential(nn.Dropout(0.5),
-                                      nn.Linear(512, 512),
-                                      nn.ReLU()))
-        ]))
+        # self.conv2_classifier = nn.Sequential(OrderedDict([
+        #     ('cl2_fc4', nn.Sequential(nn.Dropout(0.5),
+        #                               nn.Linear(3 * 3 * 256, 512),
+        #                               nn.ReLU())),
+        #     ('cl2_fc5', nn.Sequential(nn.Dropout(0.5),
+        #                               nn.Linear(512, 512),
+        #                               nn.ReLU()))
+        # ]))
 
         self.conv3_classifier = nn.Sequential(OrderedDict([
             ('cl3_fc4', nn.Sequential(nn.Dropout(0.5),
@@ -165,8 +165,8 @@ class MDNet(nn.Module):
                               self.conv1_feat_extractor,
                               self.conv2_feat_extractor,
                               # self.conv3_feat_extractor,
-                              self.conv1_classifier,
-                              self.conv2_classifier,
+                              # self.conv1_classifier,
+                              # self.conv2_classifier,
                               self.conv3_classifier,
                               self.fusion_classifier
                               ]
@@ -174,11 +174,11 @@ class MDNet(nn.Module):
         # self.branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
         #                                              nn.Linear(512, 2)) for _ in range(K)])
 
-        self.cl1_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
-                                                         nn.Linear(512, 2)) for _ in range(K)])
-
-        self.cl2_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
-                                                         nn.Linear(512, 2)) for _ in range(K)])
+        # self.cl1_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+        #                                                  nn.Linear(512, 2)) for _ in range(K)])
+        #
+        # self.cl2_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
+        #                                                  nn.Linear(512, 2)) for _ in range(K)])
 
         self.cl3_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
                                                          nn.Linear(512, 2)) for _ in range(K)])
@@ -186,8 +186,9 @@ class MDNet(nn.Module):
         self.fusion_branches = nn.ModuleList([nn.Sequential(nn.Dropout(0.5),
                                                             nn.Linear(512, 2)) for _ in range(K)])
 
-        self.domain_specific_layers = [self.cl1_branches,
-                                       self.cl2_branches,
+        self.domain_specific_layers = [
+            # self.cl1_branches,
+            #                            self.cl2_branches,
                                        self.cl3_branches,
                                        self.fusion_branches
                                        ]
@@ -227,11 +228,11 @@ class MDNet(nn.Module):
         #     append_params(self.params, module, name)
         #
 
-        for k, module in enumerate(self.cl1_branches):
-            append_params(self.params, module, 'cl1_fc6_%d' % (k))
-
-        for k, module in enumerate(self.cl2_branches):
-            append_params(self.params, module, 'cl2_fc6_%d' % (k))
+        # for k, module in enumerate(self.cl1_branches):
+        #     append_params(self.params, module, 'cl1_fc6_%d' % (k))
+        #
+        # for k, module in enumerate(self.cl2_branches):
+        #     append_params(self.params, module, 'cl2_fc6_%d' % (k))
 
         for k, module in enumerate(self.cl3_branches):
             append_params(self.params, module, 'cl3_fc6_%d' % (k))
@@ -326,8 +327,8 @@ class MDNet(nn.Module):
 
                     return combined_feats
 
-                conv1_scores, conv1_bf_fc_feats = classify_from_feat(conv1_feat.view(conv1_feat.size(0), -1), self.conv1_classifier, self.cl1_branches, k)
-                conv2_scores, conv2_bf_fc_feats = classify_from_feat(conv2_feat.view(conv2_feat.size(0), -1), self.conv2_classifier, self.cl2_branches, k)
+                # conv1_scores, conv1_bf_fc_feats = classify_from_feat(conv1_feat.view(conv1_feat.size(0), -1), self.conv1_classifier, self.cl1_branches, k)
+                # conv2_scores, conv2_bf_fc_feats = classify_from_feat(conv2_feat.view(conv2_feat.size(0), -1), self.conv2_classifier, self.cl2_branches, k)
                 conv3_scores, conv3_bf_fc_feats = classify_from_feat(conv3_feat.view(conv3_feat.size(0), -1), self.conv3_classifier, self.cl3_branches, k)
 
                 if out_layer == 'conv3':
@@ -355,7 +356,8 @@ class MDNet(nn.Module):
                 fusion_scores = classify_from_bf_fc_feat(fusion_bf_fc_feats, self.fusion_classifier, self.fusion_branches, k)
 
             # TODO: better impl and more options
-            final_scores = (conv1_scores + conv2_scores + conv3_scores + fusion_scores) / 4
+            # final_scores = (conv1_scores + conv2_scores + conv3_scores + fusion_scores) / 4
+            final_scores = (conv3_scores + fusion_scores) / 2
             return final_scores
 
 
@@ -400,8 +402,8 @@ class MDNet(nn.Module):
         self.conv1_feat_extractor.load_state_dict(states['conv1_feat_extractor'])
         self.conv2_feat_extractor.load_state_dict(states['conv2_feat_extractor'])
         # self.conv3_feat_extractor.load_state_dict(states['conv3_feat_extractor'])
-        self.conv1_classifier.load_state_dict(states['conv1_classifier'])
-        self.conv2_classifier.load_state_dict(states['conv2_classifier'])
+        # self.conv1_classifier.load_state_dict(states['conv1_classifier'])
+        # self.conv2_classifier.load_state_dict(states['conv2_classifier'])
         self.conv3_classifier.load_state_dict(states['conv3_classifier'])
         self.fusion_classifier.load_state_dict(states['fusion_classifier'])
 
