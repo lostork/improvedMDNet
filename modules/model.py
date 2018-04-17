@@ -8,6 +8,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
 
+from options import *
+
 # add parameters to params dict
 def append_params(params, module, prefix):
     # module : nn.Sequential(...)
@@ -416,7 +418,20 @@ class MDNet(nn.Module):
             self.cnn_layers[i][0].weight.data = torch.from_numpy(np.transpose(weight, (3, 2, 0, 1)))
             self.cnn_layers[i][0].bias.data = torch.from_numpy(bias[:, 0])
 
-    
+        states = torch.load(opts['original_model_path'])
+        shared_layers = states['shared_layers']
+
+        # TODO: unc;
+        self.conv3_classifier[0][1].weight.data = shared_layers['fc4.1.weight'].clone()
+        self.conv3_classifier[0][1].bias.data = shared_layers['fc4.1.bias'].clone()
+        self.conv3_classifier[1][1].weight.data = shared_layers['fc5.1.weight'].clone()
+        self.conv3_classifier[1][1].bias.data = shared_layers['fc5.1.bias'].clone()
+
+        self.fusion_classifier[1][1].weight.data = shared_layers['fc4.1.weight'].clone()
+        self.fusion_classifier[1][1].bias.data = shared_layers['fc4.1.bias'].clone()
+        self.fusion_classifier[2][1].weight.data = shared_layers['fc5.1.weight'].clone()
+        self.fusion_classifier[2][1].bias.data = shared_layers['fc5.1.bias'].clone()
+        # print 1
 
 class BinaryLoss(nn.Module):
     def __init__(self):
