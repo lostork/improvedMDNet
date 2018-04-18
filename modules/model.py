@@ -427,10 +427,10 @@ class MDNet(nn.Module):
         self.conv3_classifier[1][1].weight.data = shared_layers['fc5.1.weight'].clone()
         self.conv3_classifier[1][1].bias.data = shared_layers['fc5.1.bias'].clone()
 
-        self.fusion_classifier[1][1].weight.data = shared_layers['fc4.1.weight'].clone()
-        self.fusion_classifier[1][1].bias.data = shared_layers['fc4.1.bias'].clone()
-        self.fusion_classifier[2][1].weight.data = shared_layers['fc5.1.weight'].clone()
-        self.fusion_classifier[2][1].bias.data = shared_layers['fc5.1.bias'].clone()
+        # self.fusion_classifier[1][1].weight.data = shared_layers['fc4.1.weight'].clone()
+        # self.fusion_classifier[1][1].bias.data = shared_layers['fc4.1.bias'].clone()
+        # self.fusion_classifier[2][1].weight.data = shared_layers['fc5.1.weight'].clone()
+        # self.fusion_classifier[2][1].bias.data = shared_layers['fc5.1.bias'].clone()
         # print 1
 
 class BinaryLoss(nn.Module):
