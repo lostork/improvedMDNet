@@ -11,6 +11,8 @@ from data_prov import *
 from model import *
 from options import *
 
+from tensorboardX import SummaryWriter
+
 img_home = '../dataset/'
 data_path = 'data/vot-otb.pkl'
 
@@ -51,6 +53,8 @@ def train_mdnet():
     if opts['use_gpu']:
         model = model.cuda()
 
+    writer = SummaryWriter()
+
     # opts['ft_layers'] = ['conv','fc']
     model.set_learnable_params(opts['ft_layers'])
         
@@ -64,6 +68,7 @@ def train_mdnet():
     best_prec = 0.
     # opts['n_cycles'] = 50
     # TODO: cancel test
+    iter = 0
     for i in range(opts['n_cycles']):
     # for i in range(2):
         print "==== Start Cycle %d ====" % (i)
@@ -86,6 +91,26 @@ def train_mdnet():
             loss = criterion(pos_score, neg_score)
             model.zero_grad()
             loss.backward()
+            # for name, param in model.named_parameters():
+            #     print 1
+            iter += 1
+            for name, param in model.params.items():
+                writer.add_histogram('params/value/'+name, param, iter, bins='doane')
+                if param.grad is None:
+                    # print name
+                    pass
+                else:
+                    writer.add_histogram('params/grad/'+name, param.grad, iter,bins='doane')
+
+
+            for name, var in model.inter_var.items():
+                writer.add_histogram('inter_var/grad/'+name, var.grad, iter,bins='doane')
+
+            fusion_feat_conv3_grad = model.inter_var['fusion_feat'].grad[:,352:,:,:].clone()
+            writer.add_histogram('inter_var/grad/fusion_feat_conv3', fusion_feat_conv3_grad, iter, bins='doane')
+            conv3_grad_minus = model.inter_var['conv3_feat'].grad - fusion_feat_conv3_grad
+            writer.add_histogram('inter_var/grad/conv3_grad_minus', conv3_grad_minus, iter, bins='doane')
+
             # TODO: unc for the clip grad effect in the new architecture
             torch.nn.utils.clip_grad_norm(model.parameters(), opts['grad_clip'])
             optimizer.step()
@@ -135,6 +160,7 @@ def train_mdnet():
             # if opts['use_gpu']:
             #     model = model.cuda()
 
+    writer.close()
 
 if __name__ == "__main__":
     train_mdnet()

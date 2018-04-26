@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
 
+
 # add parameters to params dict
 def append_params(params, module, prefix):
     # module : nn.Sequential(...)
@@ -87,6 +88,7 @@ class MDNet(nn.Module):
     def __init__(self, model_path=None, K=1):
         super(MDNet, self).__init__()
         self.K = K
+        self.inter_var = dict()
         # torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True)
         self.cnn_layers = nn.Sequential(OrderedDict([
                 ('conv1', nn.Sequential(nn.Conv2d(3, 96, kernel_size=7, stride=2),
@@ -292,6 +294,13 @@ class MDNet(nn.Module):
 
                 #TODO:unc;
                 fusion_feat = torch.cat((conv1_feat, conv2_feat, conv3_feat), 1)
+                # a = fusion_feat[:,352:,:,:] == conv3_feat
+                # print fusion_feat[:,352:,:,:] == conv3_feat
+                fusion_feat.retain_grad()
+                conv3_feat.retain_grad()
+
+                self.inter_var['fusion_feat'] = fusion_feat
+                self.inter_var['conv3_feat'] = conv3_feat
 
                 # if out_layer == 'fusion_feats_only':
                 #     #             x = x.view(x.size(0),-1)
