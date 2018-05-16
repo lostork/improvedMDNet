@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
+from options import *
 
 # add parameters to params dict
 def append_params(params, module, prefix):
@@ -407,14 +408,27 @@ class MDNet(nn.Module):
 
 
     def load_mat_model(self, matfile):
-        mat = scipy.io.loadmat(matfile)
-        mat_layers = list(mat['layers'])[0]
-        
-        # copy conv weights
-        for i in range(3):
-            weight, bias = mat_layers[i*4]['weights'].item()[0]
-            self.cnn_layers[i][0].weight.data = torch.from_numpy(np.transpose(weight, (3, 2, 0, 1)))
-            self.cnn_layers[i][0].bias.data = torch.from_numpy(bias[:, 0])
+        states = torch.load(opts['original_model_path'])
+        shared_layers = states['shared_layers']
+
+        self.cnn_layers[0][0].weight.data = shared_layers['conv1.0.weight'].clone()
+        self.cnn_layers[0][0].bias.data = shared_layers['conv1.0.bias'].clone()
+
+        self.cnn_layers[1][0].weight.data = shared_layers['conv2.0.weight'].clone()
+        self.cnn_layers[1][0].bias.data = shared_layers['conv2.0.bias'].clone()
+
+        self.cnn_layers[2][0].weight.data = shared_layers['conv3.0.weight'].clone()
+        self.cnn_layers[2][0].bias.data = shared_layers['conv3.0.bias'].clone()
+
+        # print 1
+        # mat = scipy.io.loadmat(matfile)
+        # mat_layers = list(mat['layers'])[0]
+        #
+        # # copy conv weights
+        # for i in range(3):
+        #     weight, bias = mat_layers[i*4]['weights'].item()[0]
+        #     self.cnn_layers[i][0].weight.data = torch.from_numpy(np.transpose(weight, (3, 2, 0, 1)))
+        #     self.cnn_layers[i][0].bias.data = torch.from_numpy(bias[:, 0])
 
     
 
